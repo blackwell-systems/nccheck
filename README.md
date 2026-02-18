@@ -4,7 +4,7 @@
 
 Given a finite-state system specification with invariants and compensation, nccheck exhaustively verifies whether all processors consuming the same events will converge to the same valid state regardless of application order.
 
-**Companion tool to:** [*Normalization Confluence in Federated Registry Networks*](https://doi.org/10.5281/zenodo.18671870) (Blackwell, 2026)
+**Companion tool to:** [*Normalization Confluence in Federated Registry Networks*](https://doi.org/10.5281/zenodo.18677401) (Blackwell, 2026)
 
 ## Quick Start
 
@@ -222,7 +222,7 @@ MIT License - see LICENSE file
   title = {Normalization Confluence in Federated Registry Networks},
   year = {2026},
   publisher = {Zenodo},
-  doi = {10.5281/zenodo.18671870},
-  url = {https://doi.org/10.5281/zenodo.18671870}
+  doi = {10.5281/zenodo.18677401},
+  url = {https://doi.org/10.5281/zenodo.18677401}
 }
 ```
