@@ -1,5 +1,7 @@
 # nccheck — Normalization Confluence Verifier
 
+[![Blackwell Systems™](https://raw.githubusercontent.com/blackwell-systems/blackwell-docs-theme/main/badge-trademark.svg)](https://github.com/blackwell-systems)
+
 **Reference implementation** for verifying coordination-free convergence in registry-governed stream systems.
 
 Given a finite-state system specification with invariants and compensation, nccheck exhaustively verifies whether all processors consuming the same events will converge to the same valid state regardless of application order.
