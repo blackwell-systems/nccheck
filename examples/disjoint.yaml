@@ -1,0 +1,61 @@
+# Two completely disjoint subsystems: review track and publish track.
+# Each has its own invariants, compensation, and events.
+# No invariant references variables from the other subsystem.
+# All events are absolute (no read-modify-write).
+# CC holds by product composition.
+
+registry:
+  name: disjoint_tracks
+
+  states:
+    review:
+      type: enum
+      values: [draft, submitted, approved, rejected]
+    publish:
+      type: enum
+      values: [unpublished, staged, live, archived]
+
+  initial:
+    review: draft
+    publish: unpublished
+
+  invariants:
+    # Each invariant touches only ONE variable.
+    no_draft_after_submit:
+      expr: "review != draft"
+    no_unpublished_after_stage:
+      expr: "publish != unpublished"
+
+  compensation:
+    - invariant: no_draft_after_submit
+      repair:
+        review: submitted
+    - invariant: no_unpublished_after_stage
+      repair:
+        publish: staged
+
+  events:
+    submit:
+      effect:
+        review: submitted
+    approve:
+      effect:
+        review: approved
+    reject:
+      effect:
+        review: rejected
+    reset_review:
+      effect:
+        review: draft
+    stage:
+      effect:
+        publish: staged
+    go_live:
+      effect:
+        publish: live
+    archive:
+      effect:
+        publish: archived
+    unpublish:
+      effect:
+        publish: unpublished

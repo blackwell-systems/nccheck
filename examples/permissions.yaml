@@ -1,0 +1,40 @@
+# Permission system: two independent permission levels.
+# Each can be set to any level. Single cross-cutting invariant.
+# Compensation always demotes write_level (deterministic, one direction).
+# Key property: events SET values absolutely, never read-modify-write.
+
+registry:
+  name: permissions
+
+  states:
+    can_read:
+      type: bool
+    can_write:
+      type: bool
+
+  initial:
+    can_read: false
+    can_write: false
+
+  invariants:
+    write_needs_read:
+      expr: "not (can_write and not can_read)"
+
+  compensation:
+    - invariant: write_needs_read
+      repair:
+        can_write: false
+
+  events:
+    grant_read:
+      effect:
+        can_read: true
+    revoke_read:
+      effect:
+        can_read: false
+    grant_write:
+      effect:
+        can_write: true
+    revoke_write:
+      effect:
+        can_write: false

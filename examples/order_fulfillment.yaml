@@ -1,0 +1,81 @@
+# Order Fulfillment Registry
+# Demonstrates normalization confluence verification
+#
+# State model: separate tracking of order lifecycle stages
+# allows invariants to express cross-variable constraints.
+
+registry:
+  name: order_fulfillment
+
+  states:
+    status:
+      type: enum
+      values: [pending, confirmed, shipped, delivered, cancelled]
+    paid:
+      type: bool
+    in_stock:
+      type: bool
+    inventory:
+      type: int
+      range: [0, 20]
+
+  initial:
+    status: pending
+    paid: false
+    in_stock: true
+    inventory: 10
+
+  invariants:
+    no_ship_without_pay:
+      expr: "not (status == shipped and not paid)"
+    no_ship_without_stock:
+      expr: "not (status == shipped and not in_stock)"
+    stock_consistency:
+      expr: "in_stock == (inventory > 0)"
+
+  # Compensation applied in declared order until fixpoint.
+  # Each repair targets one invariant.
+  # Repair assignments may reference current state variables.
+  compensation:
+    - invariant: no_ship_without_pay
+      repair:
+        status: confirmed
+    - invariant: no_ship_without_stock
+      repair:
+        status: confirmed
+    - invariant: stock_consistency
+      repair:
+        in_stock: "inventory > 0"
+
+  events:
+    confirm_order:
+      guard: "status == pending"
+      effect:
+        status: confirmed
+
+    process_payment:
+      guard: "status == confirmed or status == pending"
+      effect:
+        paid: true
+
+    ship_item:
+      guard: "status == confirmed and paid and inventory > 0"
+      effect:
+        status: shipped
+        inventory: "max(0, inventory - 1)"
+
+    deliver:
+      guard: "status == shipped"
+      effect:
+        status: delivered
+
+    cancel_order:
+      guard: "status != shipped and status != delivered"
+      effect:
+        status: cancelled
+        paid: false
+
+    restock:
+      effect:
+        inventory: "min(inventory + 5, 20)"
+        in_stock: true

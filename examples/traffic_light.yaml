@@ -1,0 +1,41 @@
+# Traffic Light Controller
+# Two independent signals with safety invariant.
+# Compensation demotes east-west to safe state (north-south priority).
+
+registry:
+  name: traffic_light
+
+  states:
+    ns:
+      type: enum
+      values: [ns_red, ns_yellow, ns_green]
+    ew:
+      type: enum
+      values: [ew_red, ew_yellow, ew_green]
+
+  initial:
+    ns: ns_red
+    ew: ew_red
+
+  invariants:
+    no_dual_green:
+      expr: "not (ns == ns_green and ew == ew_green)"
+
+  compensation:
+    - invariant: no_dual_green
+      repair:
+        ew: ew_red
+
+  events:
+    ns_go:
+      effect:
+        ns: ns_green
+    ns_stop:
+      effect:
+        ns: ns_red
+    ew_go:
+      effect:
+        ew: ew_green
+    ew_stop:
+      effect:
+        ew: ew_red

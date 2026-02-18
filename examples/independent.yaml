@@ -1,0 +1,45 @@
+# Two independent subsystems. No cross-variable invariants.
+# CC holds because repairs never affect each other's variables.
+
+registry:
+  name: independent_subsystems
+
+  states:
+    temp:
+      type: int
+      range: [0, 100]
+    pressure:
+      type: int
+      range: [0, 100]
+
+  initial:
+    temp: 50
+    pressure: 50
+
+  invariants:
+    temp_safe:
+      expr: "temp >= 10 and temp <= 90"
+    pressure_safe:
+      expr: "pressure >= 10 and pressure <= 90"
+
+  compensation:
+    - invariant: temp_safe
+      repair:
+        temp: "clamp(10, temp, 90)"
+    - invariant: pressure_safe
+      repair:
+        pressure: "clamp(10, pressure, 90)"
+
+  events:
+    heat:
+      effect:
+        temp: "min(temp + 15, 100)"
+    cool:
+      effect:
+        temp: "max(temp - 15, 0)"
+    pressurize:
+      effect:
+        pressure: "min(pressure + 15, 100)"
+    depressurize:
+      effect:
+        pressure: "max(pressure - 15, 0)"

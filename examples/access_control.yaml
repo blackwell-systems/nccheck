@@ -1,0 +1,54 @@
+# Access control with two independent permission dimensions.
+# Events set absolute states. Compensation demotes to safe level.
+
+registry:
+  name: access_control
+
+  states:
+    read_perm:
+      type: enum
+      values: [r_none, r_basic, r_full]
+    write_perm:
+      type: enum
+      values: [w_none, w_basic, w_full]
+    audited:
+      type: bool
+
+  initial:
+    read_perm: r_none
+    write_perm: w_none
+    audited: false
+
+  invariants:
+    write_requires_read:
+      expr: "not (write_perm == w_full and read_perm == r_none)"
+    full_write_requires_audit:
+      expr: "not (write_perm == w_full and not audited)"
+
+  compensation:
+    - invariant: write_requires_read
+      repair:
+        write_perm: w_basic
+    - invariant: full_write_requires_audit
+      repair:
+        write_perm: w_basic
+
+  events:
+    grant_read:
+      effect:
+        read_perm: r_full
+    revoke_read:
+      effect:
+        read_perm: r_none
+    grant_write:
+      effect:
+        write_perm: w_full
+    revoke_write:
+      effect:
+        write_perm: w_none
+    enable_audit:
+      effect:
+        audited: true
+    disable_audit:
+      effect:
+        audited: false

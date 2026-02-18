@@ -1,0 +1,52 @@
+# Simplest passing example: two independent subsystems.
+# No cross-variable invariants. Each event and repair 
+# touches only one dimension. CC holds trivially.
+
+registry:
+  name: two_flags
+
+  states:
+    door:
+      type: enum
+      values: [locked, closed, open]
+    alarm:
+      type: enum
+      values: [armed, disarmed, triggered]
+
+  initial:
+    door: locked
+    alarm: armed
+
+  invariants:
+    no_open_locked:
+      expr: "door != open"
+    no_triggered_armed:
+      expr: "not (alarm == triggered and alarm == armed)"
+
+  compensation:
+    - invariant: no_open_locked
+      repair:
+        door: closed
+    - invariant: no_triggered_armed
+      repair:
+        alarm: disarmed
+
+  events:
+    unlock:
+      effect:
+        door: closed
+    lock:
+      effect:
+        door: locked
+    open_door:
+      effect:
+        door: open
+    arm_alarm:
+      effect:
+        alarm: armed
+    disarm_alarm:
+      effect:
+        alarm: disarmed
+    trigger_alarm:
+      effect:
+        alarm: triggered

@@ -1,0 +1,50 @@
+# Document workflow: two independent status tracks.
+# All events SET states absolutely (no read-modify-write).
+# Single invariant with deterministic one-way compensation.
+#
+# This is the pattern the paper's convergence theorem targets:
+# absolute transitions + deterministic compensation.
+
+registry:
+  name: document_workflow
+
+  states:
+    review:
+      type: enum
+      values: [draft, submitted, approved, rejected]
+    publish:
+      type: enum
+      values: [unpublished, staged, live, archived]
+
+  initial:
+    review: draft
+    publish: unpublished
+
+  invariants:
+    no_live_without_approval:
+      expr: "not (publish == live and review != approved)"
+
+  compensation:
+    - invariant: no_live_without_approval
+      repair:
+        publish: staged
+
+  events:
+    submit:
+      effect:
+        review: submitted
+    approve:
+      effect:
+        review: approved
+    reject:
+      effect:
+        review: rejected
+    stage:
+      effect:
+        publish: staged
+    go_live:
+      effect:
+        publish: live
+    archive:
+      effect:
+        publish: archived

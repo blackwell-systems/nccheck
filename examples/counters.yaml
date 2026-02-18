@@ -1,0 +1,47 @@
+# Two independent bounded counters.
+# Each has its own invariant and compensation.
+# Events on different counters are independent.
+# This SHOULD pass CC: disjoint footprints, independent repairs.
+
+registry:
+  name: independent_counters
+
+  states:
+    x:
+      type: int
+      range: [0, 5]
+    y:
+      type: int
+      range: [0, 5]
+
+  initial:
+    x: 3
+    y: 3
+
+  invariants:
+    x_in_bounds:
+      expr: "x >= 1 and x <= 4"
+    y_in_bounds:
+      expr: "y >= 1 and y <= 4"
+
+  compensation:
+    - invariant: x_in_bounds
+      repair:
+        x: "clamp(1, x, 4)"
+    - invariant: y_in_bounds
+      repair:
+        y: "clamp(1, y, 4)"
+
+  events:
+    inc_x:
+      effect:
+        x: "min(x + 1, 5)"
+    dec_x:
+      effect:
+        x: "max(x - 1, 0)"
+    inc_y:
+      effect:
+        y: "min(y + 1, 5)"
+    dec_y:
+      effect:
+        y: "max(y - 1, 0)"
