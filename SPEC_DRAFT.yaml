@@ -1,0 +1,178 @@
+# ============================================================
+# nccheck registry specification
+# ============================================================
+#
+# A registry spec defines a finite-state system with invariants
+# and compensation. nccheck exhaustively verifies WFC, CC, and
+# (optionally) federated M1 — guaranteeing normalization
+# confluence if all checks pass.
+
+registry:
+  name: order_fulfillment
+
+  # ----------------------------------------------------------
+  # 1. STATE VARIABLES
+  #
+  # Every variable must have a finite domain.
+  # Supported types:
+  #   bool              — true/false
+  #   enum [a, b, c]    — named values
+  #   int[min..max]     — bounded integer (inclusive)
+  #
+  # The state space is the cartesian product of all domains.
+  # Tool will refuse specs where |Σ| exceeds a configured limit
+  # (default: 2^20 = ~1M states).
+  # ----------------------------------------------------------
+  vars:
+    status:
+      type: enum
+      values: [pending, paid, shipped, delivered, cancelled]
+    has_payment:
+      type: bool
+    inventory:
+      type: int
+      range: [0, 100]
+
+  # ----------------------------------------------------------
+  # 2. INVARIANTS
+  #
+  # Boolean expressions over state variables.
+  # V_R(σ) = conjunction of all invariant predicates.
+  # Expression language:
+  #   comparisons:  ==, !=, <, <=, >, >=
+  #   logic:        and, or, not, implies
+  #   variables:    refer by name
+  #   constants:    true, false, enum values, integers
+  # ----------------------------------------------------------
+  invariants:
+    - name: no_ship_before_pay
+      holds: "status != shipped or has_payment"
+
+    - name: no_deliver_before_ship
+      holds: "status != delivered or status == shipped"
+      # NOTE: this invariant is trivially true as written — 
+      # real version would track a shipped flag separately.
+      # Simplified here for format demonstration.
+
+    - name: stock_non_negative
+      holds: "inventory >= 0"
+
+  # ----------------------------------------------------------
+  # 3. COMPENSATION
+  #
+  # Repair rules applied when invariants are violated.
+  # Rules are applied in declared order (top to bottom),
+  # repeatedly until all invariants hold. This defines ρ_R
+  # deterministically.
+  #
+  # Each rule:
+  #   - triggers when its 'when' predicate is true
+  #   - executes 'repair' assignments in sequence
+  #   - assignments are the same expression language as
+  #     invariants, plus 'set var = expr'
+  #
+  # No loops, no recursion. The tool verifies termination
+  # by exhaustive enumeration (WFC check).
+  # ----------------------------------------------------------
+  compensation:
+    order:  # priority order — first matching rule fires
+      - name: fix_unpaid_shipment
+        when: "status == shipped and not has_payment"
+        repair:
+          - "status = pending"
+
+      - name: fix_negative_stock
+        when: "inventory < 0"
+        repair:
+          - "inventory = 0"
+
+  # ----------------------------------------------------------
+  # 4. EVENTS
+  #
+  # Named state transitions. Each event has:
+  #   - guard (optional): precondition. If absent, event
+  #     applies in all states. If present and false, event
+  #     is a no-op in that state.
+  #   - effect: ordered list of assignments.
+  #
+  # After an event is applied, compensation runs to fixpoint.
+  # The tool computes Step(e, s) = NF(apply(e, s)) for all
+  # events and states.
+  # ----------------------------------------------------------
+  events:
+    - name: place_order
+      effect:
+        - "status = pending"
+        - "has_payment = false"
+
+    - name: process_payment
+      guard: "status == pending"
+      effect:
+        - "has_payment = true"
+        - "status = paid"
+
+    - name: ship_item
+      guard: "status == paid and inventory > 0"
+      effect:
+        - "status = shipped"
+        - "inventory = inventory - 1"
+
+    - name: cancel_order
+      guard: "status != delivered"
+      effect:
+        - "status = cancelled"
+
+    - name: restock
+      effect:
+        - "inventory = inventory + 1"
+
+  # ----------------------------------------------------------
+  # 5. INDEPENDENCE (optional)
+  #
+  # By default the tool checks CC1 for ALL event pairs.
+  # You can declare which events are independent (may be
+  # reordered by different processors). This restricts
+  # CC1 checking to only independent pairs, which is
+  # both more precise and faster.
+  #
+  # If omitted: all pairs are assumed potentially independent.
+  # ----------------------------------------------------------
+  independence:
+    # "all" (default) — check every pair
+    # "declared" — check only listed pairs
+    mode: declared
+    pairs:
+      - [place_order, restock]
+      - [process_payment, restock]
+      - [ship_item, restock]
+      - [cancel_order, restock]
+
+
+# ============================================================
+# FEDERATION (optional)
+#
+# Connects multiple registries via directed morphisms.
+# Each morphism declares:
+#   - source and target registries
+#   - which target variables are "shared" (overwritten by source)
+#   - the mapping function from source state to shared values
+#
+# The tool checks:
+#   - Topology is a tree (directed forest)
+#   - M1: overwrite preserves target validity
+# ============================================================
+
+# federation:
+#   registries:
+#     - file: manufacturer.yaml
+#     - file: supplier.yaml
+#
+#   morphisms:
+#     - name: spec_conformance
+#       source: manufacturer
+#       target: supplier
+#       shared:
+#         - target_var: supplier_spec_level
+#           from: "active_spec"
+#       mapping:
+#         supplier_spec_level: "source.active_spec"
